@@ -223,22 +223,24 @@ You should be able to see:
 
 ## Step 9: IP Address Configuration for PCs
 
-Configure the PCs using the following IP address plan.
+We need to assign IP addresses to PCs and the ip address plan is shown in the screenshot:
+![Ip Address Plan](screenshots/ip-address-plan.png)
+
+Now we will configure PC-Admin, click on PC-Admin then go to desktop and ip configuration, select static and then enter:
 
 **PC-Admin**
-
 - IP Address: 192.168.10.10  
 - Subnet Mask: 255.255.255.0  
-- Default Gateway: 192.168.10.1  
+- Default Gateway: 192.168.10.1
+  
+Now do the same for the other PCs.
 
 **PC-HR**
-
 - IP Address: 192.168.20.10  
 - Subnet Mask: 255.255.255.0  
 - Default Gateway: 192.168.20.1  
 
 **PC-Guest**
-
 - IP Address: 192.168.30.10  
 - Subnet Mask: 255.255.255.0  
 - Default Gateway: 192.168.30.1  
@@ -249,9 +251,18 @@ Configure the PCs using the following IP address plan.
 
 ## Step 10: Connectivity Testing (Before ACLs)
 
-From PC-Admin, test connectivity:
+Now to test the connectivity we will ping PC-HR, PC-Guest from PC-Admin.
 
-From PC-Guest, test:
+```
+ping 192.168.20.10
+ping 192.168.30.10
+```
+
+Now try to ping PC-Admin from PC-Guest.
+
+```
+ping 192.168.10.10
+```
 
 This should work for now because we haven't implemented security rules yet.
 
@@ -261,24 +272,88 @@ This should work for now because we haven't implemented security rules yet.
 
 ## Step 11: Implementing ACLs
 
-Now we add ACLs to block Guest VLAN access to Admin and HR while allowing everything else.
+Now we add ACLs to block Guest VLAN access to Admin and HR while allowing everything else. Click on Router0 CLI then enter these commands:
 
-Apply the ACL:
+```
+enable
+configure terminal
+```
+Then create the ACL rules so by running these commands:
+
+```
+access-list 100 deny ip 192.168.30.0 0.0.0.255 192.168.10.0 0.0.0.255
+access-list 100 deny ip 192.168.30.0 0.0.0.255 192.168.20.0 0.0.0.255
+access-list 100 permit ip any any
+```
+What these basically mean is that we are denying Guest IP to Admin and HR Network and then allowing everything else.
 
 ![ACL Setup](screenshots/acl-setup.png)  
+
+Now we will tell the router where to implement the rules so we will apply the ACL to the interface.
+
+```
+interface gigabitEthernet0/0
+ip access-group 100 in
+exit
+```
+
+Now to verify the ACL run:
+```
+show access-lists
+```
+
 ![ACL Verified](screenshots/acl-config.png)
 
 ---
 
 ## Step 12: ACL Issues and Troubleshooting
 
-I encountered an issue where Guest could still ping Admin and HR. To fix this, I moved the ACL to VLAN 30.
+Now let's test the security rules, by pinging from PC-Guest try to ping PC-Admin and PC-HR the output should both fail.
+
+```
+ping 192.168.10.10
+ping 192.168.20.10
+```
+Then try pinging from PC-Admin to PC-HR and PC-Guest and it should both work.
+
+```
+ping 192.168.20.10
+ping 192.168.30.10
+```
+[screenshot]
+
+But as you've noticed I encountered an issue where Guest could still ping Admin and HR. To fix this, I moved the ACL to VLAN 30.
+
+I did so by running:
+
+```
+enable
+configure terminal
+interface gigabitEthernet0/0
+no ip access-group 100 in
+exit
+```
+
+Then applying the ACL to the Guest VLAN
+
+```
+interface gigabitEthernet0/0.30
+ip access-group 100 in
+exit
+```
+- Guest Access Denied Access to Admin and HR
 
 ![Guest Ping Denied](screenshots/ping-denied-guest.png)
 
-This caused another issue where Admin could not ping Guest due to ping being two-way traffic and ACL being applied inbound.
+This caused another issue where Admin could not ping Guest due to ping being two-way traffic and ACL being applied inbound and blocking the Guest from replying to the Admin.
+
+This behavior is expected with our current ACL settings we built a strict guest isolation so the Guest can't initiate connections or respond to internal networks
+
+- Admin Access Allowed for HR but Request Time Out for Guest
 
 ![Admin Ping Issue](screenshots/ping-success-admin.png)
+
+Now this is already a good secured network but if we want to modify it further then we can improve the ACL logic.
 
 ---
 
@@ -286,16 +361,33 @@ This caused another issue where Admin could not ping Guest due to ping being two
 
 To allow Admin to Guest communication but block Guest to Admin and HR, I modified the ACL:
 
+We will allow ping replies so we will now remove the old ACL by running:
+
+```
+configure terminal
+no access-list 100
+exit
+```
+
+To create a smarter ACL which allows Guest to reply to pings but cannot initiate access to Admin or HR by running:
+
+```
+access-list 100 permit icmp 192.168.30.0 0.0.0.255 any echo-reply
+access-list 100 deny ip 192.168.30.0 0.0.0.255 192.168.10.0 0.0.0.255
+access-list 100 deny ip 192.168.30.0 0.0.0.255 192.168.20.0 0.0.0.255
+access-list 100 permit ip any any
+```
+
 ---
 
 ## Step 14: Final Testing and Completion
 
-**Admin to Guest**
+Now for the last test we should ping again from Admin and from Guest to check if the rules are applied.
 
+**Admin to Guest**
 ![Admin to Guest Ping](screenshots/admin-to-guest.png)
 
 **Guest to Admin**
-
 ![Guest to Admin Ping](screenshots/guest-to-admin.png)
 
 Now everything is set and we have now created a simple secure small network.
