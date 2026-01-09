@@ -4,215 +4,218 @@ This is my personal documentation for the home lab I built to simulate real netw
 
 ---
 
-## Step 1: Setting Up My Home Lab
+## Step 1: Network Design and Devices Used
 
-First we need to download and install **Cisco Packet Tracer**
+So what we will be building is a small office network and we want to separate the Admin, HR and Guest departments and restrict and give access depending on the role.
 
----
+So once we open up Cisco Packet Tracer we will be using this devices:
 
+- 1 Router (2911)  
+- 1 Switch (2960)  
+- 3 PCs  
 
+Rename the PCs:
 
----
-
-## Step 2: Installing Splunk and Configuration
-
-I installed **Splunk Enterprise** on my Windows 11 VM and then set up the **Splunk Universal Forwarder** to send logs to Splunk.
-
-**My Notes:**
-- I had to double-check the forwarder configuration and the receiving port on Splunk Enterprise to make sure the connection worked.  
-- Once connected, I could start ingesting Windows and Linux logs for analysis.
-- Logs can also be uploaded directly via Splunk Web as '.evtx' files.
-
-Actions:
-- Installed **Splunk Enterprise**
-- Installed **Splunk Universal Forwarder**  
-- Enabled Security Event Logs in Windows  
-- Configured log forwarding to Splunk Enterprise
-
-![Splunk Login](screenshots/splunk-login.png)
+- PC-Admin  
+- PC-HR  
+- PC-Guest  
 
 ---
 
-- Splunk Add On Installed and Configured
+## Step 2: Cabling and Physical Topology
 
-![Splunk Add On](screenshots/splunk-add-on-dl.png)
-![Splunk Add On](screenshots/splunk-add-on-installed.png)
-![Splunk Add On](screenshots/splunk-add-on-verified.png)
+Connect everything using Copper Straight-Through cables.
 
----
+PCs --> Switch  
+Switch --> Router  
 
-- Splunk Forwarder Installed and Configured
+When you click the PCs using the Copper Straight-Through cables you will asked which port will be used. Select FastEthernet0 and do not choose RS232 or USB0/USB1.
 
-![Splunk Forwarder](screenshots/splunk-forwarder.png)
-![Splunk Forwarder](screenshots/splunk-forwarder-config.png)
-![Splunk Forwarder](screenshots/splunk-receiving.png)
+Now when you click the switch, Cisco Packet Tracer will ask which switch port to use, so choose FastEthernet0/1 and so on so forth choose whichever FastEthernet is available. The final output should look something like this:
 
----
+- PC-Admin --> Fa0/1  
+- PC-HR --> Fa0/2  
+- PC-Guest --> Fa0/3  
 
-## Step 3: Generating Windows Security Events
+Now connect the switch to the router. Click the Copper Straight-Through cable, then select the switch and choose GigabitEthernet0/1 or whichever is available, then click the router and select GigabitEthernet0/0.
 
-To simulate user activity and potential attacks, I ran the following command on Windows to generate failed login events:
+### Screenshots
 
-```
-runas /user:wronguser cmd
-```
+![Network Cable Map](screenshots/network-cable-map.png)  
+![Initial Network Setup](screenshots/network-first-setup.png)
 
-I monitored Windows Event Viewer and focused on:
-
-- **4625** — Failed login  
-- **4624** — Successful login  
-
-I exported the logs as `Security.evtx` and `Security.xml` to upload to Splunk later.
-  
-![Runas Failed Logon](screenshots/runas-failed-logon.png)
-![Event Viewer 4625](screenshots/event-viewer-4625.png)
+The red triangles from the switch to the router indicates that the link is down and needs configuration.
 
 ---
 
-## Step 4: Generating Kali Linux Events
+## Step 3: Enabling the Router Interface
 
-### 4.1 Monitoring Authentication Logs
+By default the router interfaces are shut down so we need to go to Router0 CLI and enable the interface by running this commands:
 
-I wanted to simulate attacks and privilege misuse. I used these commands to watch authentication logs in real-time:
+![Router Interface Enabled](screenshots/router-enabled.png)
 
-```
-sudo journalctl -u ssh
-sudo journalctl -f
-sudo journalctl -xe | grep auth
-sudo journalctl -u ssh -f
-```
+Wait a few seconds for the link to turn green.
 
----
+The issue should be fixed by now and should look something like this:
 
-### 4.2 Failed Sudo Attempts
-
-To create failed sudo events, I intentionally entered the wrong password multiple times by running this command:
-
-```
-sudo su
-```
-
-Then I monitored and checked logs by running:
-
-```
-sudo journalctl -u sudo -f
-```
-
-![Kali Failed Sudo Logs](screenshots/kali-failed-sudo.png)
+![Router Link Up](screenshots/network-second-setup.png)
 
 ---
 
-### 4.3 SSH Brute Force Attempts
+## Step 4: Configuring the Switch Trunk Port
 
-I started the SSH service by running:
+Now to setup the switch port as trunk, a trunk port carries multiple VLANs at the same time used between switch and routers or switch and switch so a trunk allows to use one physical cable for multiple VLANs so it makes sure the router isn't confused which VLAN it is.
 
-```
-sudo systemctl start ssh
-```
+Now we need to configure the switch port as trunk. Click on Switch0 CLI and run this commands:
 
-From my Windows VM, I tried logging in as root with incorrect passwords by running:
+![Switch Trunk Configuration](screenshots/switch-enabled-trunk.png)
 
-```
-ssh root@<kali-vm-ip>
-```
+Now wait a few seconds. All links should now be green and all 3 PCs are connected. The physical topology is finished but the VLANs aren't configured yet.
 
-I entered the wrong passwords to generate these logs:
-
-- Invalid user attempts  
-- Failed password attempts  
-- Authentication failures  
-
-I viewed the logs live using:
-
-```
-sudo journalctl -u ssh -f
-```
-
-![Kali SSH Logs](screenshots/kali-ssh-logs.png)
-![Windows SSH Logs](screenshots/windows-failed-ssh.png)
+![Finished Physical Topology](screenshots/network-final-setup.png)
 
 ---
 
-### 4.4 Nmap Reconnaissance Scan
+## Step 5: Creating VLANs on the Switch
 
-I ran a SYN scan from Kali to Windows:
+Now we create the VLANs on the switch. First click Switch0 CLI and run this commands:
 
-```
-nmap -sS <Windows-IP>
-```
-
-This triggered and generates Windows firewall events. I checked Event Viewer for:
-
-- **5152**  
-- **5156**  
-- **5985**  
-- **26001**  
-- Firewall blocks
-
-![Kali Nmap to Windows](screenshots/kali-nmap-scan.png)
+![VLAN Setup](screenshots/vlan-setup.png)  
+![VLAN Verified](screenshots/vlan-verified.png)
 
 ---
 
-## Step 5: Exporting Linux Logs for Splunk
+## Step 6: Assigning Switch Ports to VLANs
 
-I saved the logs to files so I could ingest them into Splunk:
+Now we assign switch ports to VLANs to isolate the PCs. Click on Switch0 CLI and input these commands:
 
-SSH logs:
+**Assign Admin PC (Fa0/1)**
 
-```
-sudo journalctl --unit=ssh > ssh_logs.txt
-```
+**Assign HR PC (Fa0/2)**
 
-Sudo logs:
+**Assign Guest PC (Fa0/3)**
 
-```
-sudo journalctl | grep sudo > sudo_logs.txt
-```
+![Switch VLAN Setup](screenshots/switch-vlan-setup.png)  
+![VLAN Port Assignment](screenshots/vlan-port-assignment.png)
 
-Saved in:
-
-- `logs/linux/ssh_logs.txt`  
-- `logs/linux/sudo_logs.txt`  
+Now we created VLANs on the switch and assigned access ports to isolate them from each other and become separate networks.
 
 ---
 
-## Step 6: Upload Logs to Splunk
+## Step 7: Router-on-a-Stick Configuration
 
-I uploaded my exported Windows `.evtx` files and Linux `.txt` logs into Splunk and verified that they were properly indexed.  
+Now we will be configuring the router since now that the VLANs exist they are isolated and cannot communicate with other PCs in different VLANs so we need to fix that.
 
-I used SPL queries to check data:
+Now we create one sub-interface per VLAN.
 
-```
-index=home_lab host="<hostname>" | stats count by sourcetype
-index=home_lab sourcetype=WinEventLog:Security | stats count by EventCode
-```
+**VLAN 10 (Admin)**
 
-**Notes:**
-- At first, the Windows event logs showed weird formatting (`\x00...`), but exporting them as XML fixed this issue.  
-- Linux logs were correctly indexed after saving them as `.txt` files.
+**VLAN 20 (HR)**
 
-![Splunk Data Upload](screenshots/uploaded-security-events.png)
-![Splunk Data Upload](screenshots/monitor-window-events.png)
+**VLAN 30 (Guest)**
 
-- Splunk displaying data after uploading the .xml or .evtx files from Windows for Splunk to process
- 
-![Splunk Working](screenshots/splunk-working.png)
+![VLAN Subinterfaces](screenshots/vlan-subinterfaces.png)
 
 ---
 
-## Step 7: Next Steps & Improvements
+## Step 8: Verifying Router Interfaces
 
-Now that my lab is set up, I plan to:
+Verify the router configuration by running:
 
-- Build dashboards for:
-  - Failed logins  
-  - Sudo abuse  
-  - SSH brute-force attempts  
-  - Recon / nmap detection  
-- Create alerts for suspicious activity  
-- Install **Sysmon** on Windows for advanced logging  
-- Add more attacker scenarios for richer dataset  
-- Automate log generation scripts for continuous testing  
+You should be able to see:
+
+- g0/0 → up/up  
+- g0/0.10 → up/up  
+- g0/0.20 → up/up  
+- g0/0.30 → up/up  
+
+![Router Subinterfaces](screenshots/router-subinterfaces.png)
 
 ---
+
+## Step 9: IP Address Configuration for PCs
+
+Configure the PCs using the following IP address plan.
+
+**PC-Admin**
+
+- IP Address: 192.168.10.10  
+- Subnet Mask: 255.255.255.0  
+- Default Gateway: 192.168.10.1  
+
+**PC-HR**
+
+- IP Address: 192.168.20.10  
+- Subnet Mask: 255.255.255.0  
+- Default Gateway: 192.168.20.1  
+
+**PC-Guest**
+
+- IP Address: 192.168.30.10  
+- Subnet Mask: 255.255.255.0  
+- Default Gateway: 192.168.30.1  
+
+![PC IP Configuration](screenshots/pc-ip-configuration.png)
+
+---
+
+## Step 10: Connectivity Testing (Before ACLs)
+
+From PC-Admin, test connectivity:
+
+From PC-Guest, test:
+
+This should work for now because we haven't implemented security rules yet.
+
+![Ping Test Before ACL](screenshots/ping-admin.png)
+
+---
+
+## Step 11: Implementing ACLs
+
+Now we add ACLs to block Guest VLAN access to Admin and HR while allowing everything else.
+
+Apply the ACL:
+
+![ACL Setup](screenshots/acl-setup.png)  
+![ACL Verified](screenshots/acl-config.png)
+
+---
+
+## Step 12: ACL Issues and Troubleshooting
+
+I encountered an issue where Guest could still ping Admin and HR. To fix this, I moved the ACL to VLAN 30.
+
+![Guest Ping Denied](screenshots/ping-denied-guest.png)
+
+This caused another issue where Admin could not ping Guest due to ping being two-way traffic and ACL being applied inbound.
+
+![Admin Ping Issue](screenshots/ping-success-admin.png)
+
+---
+
+## Step 13: Improving the ACL Logic
+
+To allow Admin to Guest communication but block Guest to Admin and HR, I modified the ACL:
+
+---
+
+## Step 14: Final Testing and Completion
+
+**Admin to Guest**
+
+![Admin to Guest Ping](screenshots/admin-to-guest.png)
+
+**Guest to Admin**
+
+![Guest to Admin Ping](screenshots/guest-to-admin.png)
+
+Now everything is set and we have now created a simple secure small network.
+
+
+
+
+
+
+
 
