@@ -4,7 +4,7 @@ This project uses Cisco Packet Tracer project to demonstrate VLANs, ACLs, and ba
 **Objective:** Simulate a real network environment and implement basic protocols to secure the network.
 
 **Environment:**
-Cisco Packet Tracer
+- Cisco Packet Tracer
 
 **Steps Taken:**
 1. Built physical topology: connected PCs to switch, switch to router using Copper Straight-Through cables
