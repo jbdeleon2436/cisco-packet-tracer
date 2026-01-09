@@ -385,9 +385,11 @@ access-list 100 permit ip any any
 Now for the last test we should ping again from Admin and from Guest to check if the rules are applied.
 
 **Admin to Guest**
+
 ![Admin to Guest Ping](screenshots/admin-to-guest.png)
 
 **Guest to Admin**
+
 ![Guest to Admin Ping](screenshots/guest-to-admin.png)
 
 Now everything is set and we have now created a simple secure small network.
