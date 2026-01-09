@@ -55,13 +55,13 @@ The red triangles from the switch to the router indicates that the link is down 
 
 By default the router interfaces are shut down so we need to go to Router0 CLI and enable the interface by running this commands:
 
-'''
+```
 enable
 configure terminal
 interface gigabitEthernet0/0
 no shutdown
 exit
-'''
+```
 
 ![Router Interface Enabled](screenshots/router-enabled.png)
 
@@ -79,6 +79,15 @@ Now to setup the switch port as trunk, a trunk port carries multiple VLANs at th
 
 Now we need to configure the switch port as trunk. Click on Switch0 CLI and run this commands:
 
+```
+enable 
+configure terminal
+interface gigabitEthernet0/1
+switchport mode trunk
+no shutdown
+exit
+```
+
 ![Switch Trunk Configuration](screenshots/switch-enabled-trunk.png)
 
 Now wait a few seconds. All links should now be green and all 3 PCs are connected. The physical topology is finished but the VLANs aren't configured yet.
@@ -91,6 +100,23 @@ Now wait a few seconds. All links should now be green and all 3 PCs are connecte
 
 Now we create the VLANs on the switch. First click Switch0 CLI and run this commands:
 
+```
+enable
+configure terminal
+
+vlan 10
+name Admin
+exit
+
+vlan 20
+name HR
+exit
+
+vlan 30
+name Guest
+exit
+```
+
 ![VLAN Setup](screenshots/vlan-setup.png)  
 ![VLAN Verified](screenshots/vlan-verified.png)
 
@@ -101,10 +127,28 @@ Now we create the VLANs on the switch. First click Switch0 CLI and run this comm
 Now we assign switch ports to VLANs to isolate the PCs. Click on Switch0 CLI and input these commands:
 
 **Assign Admin PC (Fa0/1)**
+```
+interface fastEthernet0/1
+switchport mode access
+switchport access vlan 10
+exit
+```
 
 **Assign HR PC (Fa0/2)**
+```
+interface fastEthernet0/2
+switchport mode access
+switchport access vlan 20
+exit
+```
 
 **Assign Guest PC (Fa0/3)**
+```
+interface fastEthernet0/3
+switchport mode access
+switchport access vlan 30
+exit
+```
 
 ![Switch VLAN Setup](screenshots/switch-vlan-setup.png)  
 ![VLAN Port Assignment](screenshots/vlan-port-assignment.png)
@@ -117,13 +161,42 @@ Now we created VLANs on the switch and assigned access ports to isolate them fro
 
 Now we will be configuring the router since now that the VLANs exist they are isolated and cannot communicate with other PCs in different VLANs so we need to fix that.
 
-Now we create one sub-interface per VLAN.
+Now we will enable the router interface click on router0 cli and run these commands:
+
+```
+enable
+configure terminal
+interface gigabitEthernet0/0
+no shutdown
+exit
+```
+![Router Configuration](screenshots/router-configuration.png)
+
+Now we create one sub-interface per VLAN run the following commands:
 
 **VLAN 10 (Admin)**
+```
+interface gigabitEthernet0/0.10
+encapsulation dot1Q 10
+ip address 192.168.10.1 255.255.255.0
+exit
+```
 
 **VLAN 20 (HR)**
+```
+interface gigabitEthernet0/0.20
+encapsulation dot1Q 20
+ip address 192.168.20.1 255.255.255.0
+exit
+```
 
 **VLAN 30 (Guest)**
+```
+interface gigabitEthernet0/0.30
+encapsulation dot1Q 30
+ip address 192.168.30.1 255.255.255.0
+exit
+```
 
 ![VLAN Subinterfaces](screenshots/vlan-subinterfaces.png)
 
@@ -133,6 +206,10 @@ Now we create one sub-interface per VLAN.
 
 Verify the router configuration by running:
 
+```
+show ip interface brief
+```
+
 You should be able to see:
 
 - g0/0 → up/up  
@@ -141,7 +218,7 @@ You should be able to see:
 - g0/0.30 → up/up  
 
 ![Router Subinterfaces](screenshots/router-subinterfaces.png)
-
+(((((((((((((((((((((((((((((DITO KANA)))))))))))))))))))))))))))))))))))))))))))))
 ---
 
 ## Step 9: IP Address Configuration for PCs
