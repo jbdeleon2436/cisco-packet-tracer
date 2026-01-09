@@ -8,6 +8,9 @@ This is my personal documentation for the home lab I built to simulate real netw
 
 So what we will be building is a small office network and we want to separate the Admin, HR and Guest departments and restrict and give access depending on the role.
 
+- Guest **cannot access** Admin or HR
+- Admin **can access** everything
+
 So once we open up Cisco Packet Tracer we will be using this devices:
 
 - 1 Router (2911)  
@@ -51,6 +54,14 @@ The red triangles from the switch to the router indicates that the link is down 
 ## Step 3: Enabling the Router Interface
 
 By default the router interfaces are shut down so we need to go to Router0 CLI and enable the interface by running this commands:
+
+'''
+enable
+configure terminal
+interface gigabitEthernet0/0
+no shutdown
+exit
+'''
 
 ![Router Interface Enabled](screenshots/router-enabled.png)
 
